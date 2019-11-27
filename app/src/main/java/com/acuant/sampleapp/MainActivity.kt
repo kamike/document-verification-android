@@ -63,13 +63,10 @@ class MainActivity : AppCompatActivity() {
     private var capturedFaceImage: Bitmap? = null
     private var capturedBarcodeString: String? = null
     private var frontCaptured: Boolean = false
-    private var isHealthCard: Boolean = false
     private var isRetrying: Boolean = false
-    private var insruanceButton: Button? = null
     private var idButton: Button? = null
     private var capturingImageData: Boolean = true
     private var capturingSelfieImage: Boolean = false
-    private var capturingFacialMatch: Boolean = false
     private var facialResultString: String? = null
     private var facialLivelinessResultString: String? = null
     private var captureWaitTime: Int = 0
@@ -86,7 +83,6 @@ class MainActivity : AppCompatActivity() {
         capturedSelfieImage = null
         capturedFaceImage = null
         capturedBarcodeString = null
-        isHealthCard = false
         isRetrying = false
         capturingImageData = true
         documentInstanceID = null
@@ -98,7 +94,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
-        insruanceButton = findViewById(R.id.main_health_card)
         idButton = findViewById(R.id.main_id_passport)
 
         val autoCaptureSwitch = findViewById<Switch>(R.id.autoCaptureSwitch)
@@ -259,58 +254,33 @@ class MainActivity : AppCompatActivity() {
             if (isConfirmed) {
                 if (isFront) {
                     capturedFrontImage = CapturedImage.acuantImage
-                    if (isHealthCard) {
-                        frontCaptured = true
-                        val alert = AlertDialog.Builder(this@MainActivity)
-                        alert.setTitle("Message")
-                        //alert.setMessage("Capture back side of Health insurance card")
-                        alert.setMessage(R.string.scan_back_side_health_insurance_card)
-                        alert.setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
-                            showDocumentCaptureCamera()
-                        }
-                        alert.setNegativeButton("SKIP") { dialog, _ ->
-                            dialog.dismiss()
-                            uploadHealthCard()
-                        }
-                        alert.show()
-
-                    } else {
-                        processFrontOfDocument()
-                    }
+                    processFrontOfDocument()
                 } else {
                     capturedBackImage = CapturedImage.acuantImage
-                    if (!isHealthCard) {
-                        val alert = AlertDialog.Builder(this@MainActivity)
-                        alert.setTitle("Message")
-                        if (capturedBarcodeString != null && capturedBarcodeString!!.trim().isNotEmpty()) {
-                            alert.setMessage("Following barcode is captured.\n\n"
-                                    + "Barcode String :\n\n"
-                                    + capturedBarcodeString!!.subSequence(0, (capturedBarcodeString!!.length * 0.25).toInt())
-                                    + "...\n\n"
-                                    + "Capture Selfie Image now.")
-                        }
-                        else{
-                            alert.setMessage("Capture Selfie Image now.")
-                        }
-                        alert.setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
-                            setProgress(true, "Getting Data...")
-                            uploadBackImageOfDocument()
-                            showFrontCamera()
-                        }
-                        alert.setNegativeButton("CANCEL") { dialog, _ ->
-                            setProgress(true, "Getting Data...")
-                            facialLivelinessResultString = "Facial Liveliness Failed"
-                            capturingSelfieImage = false
-                            uploadBackImageOfDocument()
-                            dialog.dismiss()
-                        }
-                        alert.show()
-                    } else {
-                        uploadHealthCard()
+                    val alert = AlertDialog.Builder(this@MainActivity)
+                    alert.setTitle("Message")
+                    if (capturedBarcodeString != null && capturedBarcodeString!!.trim().isNotEmpty()) {
+                        alert.setMessage("Following barcode is captured.\n\n"
+                                + "Barcode String :\n\n"
+                                + capturedBarcodeString!!.subSequence(0, (capturedBarcodeString!!.length * 0.25).toInt())
+                                + "...\n\n"
+                                + "Capture Selfie Image now.")
                     }
-
+                    else{
+                        alert.setMessage("Capture Selfie Image now.")
+                    }
+                    alert.setPositiveButton("OK") { dialog, _ ->
+                        setProgress(true, "Processing")
+                        showFrontCamera()
+                        dialog.dismiss()
+                    }
+                    alert.setNegativeButton("CANCEL") { dialog, _ ->
+                        facialLivelinessResultString = "Facial Liveliness Failed"
+                        capturingSelfieImage = false
+                        showTruliooConfirm()
+                        dialog.dismiss()
+                    }
+                    alert.show()
                 }
             } else {
                 showDocumentCaptureCamera()
@@ -337,7 +307,7 @@ class MainActivity : AppCompatActivity() {
             if(resultCode == FacialLivenessActivity.RESPONSE_SUCCESS_CODE){
                 capturedSelfieImage = FaceCapturedImage.bitmapImage
                 facialLivelinessResultString = "Facial Liveliness: true"
-                processFacialMatch()
+                showTruliooConfirm()
             }
             else{
                 showFaceCaptureError()
@@ -447,59 +417,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Health Insurance Clicked
-    fun healthInsuranceClicked(@Suppress("UNUSED_PARAMETER") view: View) {
-        if(!hasInternetConnection()){
-            val alert = AlertDialog.Builder(this@MainActivity)
-            alert.setTitle("Error")
-            alert.setMessage("No internet connection available.")
-            alert.setPositiveButton("OK") { dialog, _ ->
-                dialog.dismiss()
-            }
-            alert.show()
-        }
-        else{
-            if(isInitialized){
-                frontCaptured = false
-                cleanUpTransaction()
-                isHealthCard = true
-                captureWaitTime = 0
-                showDocumentCaptureCamera()
-            }
-            else{
-                setProgress(true, "Initializing...")
-                initializeAcuantSdk(object: IAcuantPackageCallback{
-                    override fun onInitializeSuccess() {
-                        this@MainActivity.runOnUiThread {
-                            isInitialized = true
-                            frontCaptured = false
-                            cleanUpTransaction()
-                            isHealthCard = true
-                            captureWaitTime = 0
-                            showDocumentCaptureCamera()
-                            setProgress(false)
-                        }
-                    }
-
-                    override fun onInitializeFailed(error: List<Error>) {
-                        this@MainActivity.runOnUiThread {
-                            setProgress(false)
-                            val alert = AlertDialog.Builder(this@MainActivity)
-                            alert.setTitle("Error")
-                            alert.setMessage("Could not initialize")
-                            alert.setPositiveButton("OK") { dialog, _ ->
-                                dialog.dismiss()
-                            }
-                            alert.show()
-                        }
-                    }
-
-                })
-            }
-
-        }
-    }
-
     //Show Rear Camera to Capture Image of ID,Passport or Health Insruance Card
     fun showDocumentCaptureCamera() {
         CapturedImage.barcodeString = null
@@ -577,128 +494,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    //process health card images
-    private fun uploadHealthCard() {
-        this@MainActivity.runOnUiThread {
-            setProgress(true, "Processing...")
-        }
-        val idOptions = IdOptions()
-        idOptions.cardSide = CardSide.Front
-        idOptions.isHealthCard = true
-        idOptions.isRetrying = false
-        val idData = IdData()
-        idData.image = capturedFrontImage!!.image
-
-        AcuantDocumentProcessor.createInstance(idOptions, object : CreateInstanceListener {
-            override fun instanceCreated(instanceId: String?, error: Error?) {
-                if (error == null) {
-                    // Success : Instance Created
-                    documentInstanceID = instanceId
-                    // Upload front image
-                    AcuantDocumentProcessor.uploadImage(documentInstanceID,idData,idOptions, object : UploadImageListener {
-                        override fun imageUploaded(error: Error?,classification: Classification?) {
-                            if (error == null) {
-                                if (capturedBackImage!=null && capturedBackImage!!.image != null) {
-                                    // Upload back image
-                                    idData.image = capturedBackImage!!.image
-                                    idOptions.cardSide = CardSide.Back
-                                    AcuantDocumentProcessor.uploadImage(documentInstanceID, idData, idOptions, object: UploadImageListener {
-                                        override fun imageUploaded(error: Error?,classification: Classification?) {
-                                            if (error == null) {
-                                                getHealthCardData()
-                                            } else {
-                                                setProgress(false)
-                                                val alert = AlertDialog.Builder(this@MainActivity)
-                                                alert.setTitle("Error")
-                                                alert.setMessage(error.errorDescription)
-                                                alert.setPositiveButton("OK") { dialog, _ ->
-                                                    dialog.dismiss()
-                                                }
-                                                alert.show()
-                                            }
-                                        }
-
-                                    })
-                                }else{
-                                    getHealthCardData()
-                                }
-                            }else {
-                                setProgress(false)
-                                val alert = AlertDialog.Builder(this@MainActivity)
-                                alert.setTitle("Error")
-                                alert.setMessage(error.errorDescription)
-                                alert.setPositiveButton("OK") { dialog, _ ->
-                                    dialog.dismiss()
-                                }
-                                alert.show()
-
-                            }
-                        }
-
-                    })
-
-                } else {
-                    // Failure
-                    this@MainActivity.runOnUiThread {
-                        setProgress(false)
-                        val alert = AlertDialog.Builder(this@MainActivity)
-                        alert.setTitle("Error")
-                        alert.setMessage(error.errorDescription)
-                        alert.setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
-                        }
-                        alert.show()
-                    }
-
-                }
-            }
-
-        })
-
-    }
-
-    // health card data
-    fun getHealthCardData(){
-        // Get Data
-        AcuantDocumentProcessor.getData(documentInstanceID, true, object: GetDataListener {
-            override fun processingResultReceived(result: ProcessingResult?) {
-                this@MainActivity.runOnUiThread {
-                    setProgress(false)
-                }
-                if (result == null || result.error != null) {
-                    val alert = AlertDialog.Builder(this@MainActivity)
-                    alert.setTitle("Error")
-                    if (result != null) {
-                        alert.setMessage(result.error.errorDescription)
-                    } else {
-                        alert.setMessage(ErrorDescriptions.ERROR_DESC_CouldNotGetHealthCardData)
-                    }
-                    alert.setPositiveButton("OK") { dialog, _ ->
-                        dialog.dismiss()
-                    }
-                    alert.show()
-
-                } else {
-                    val healthCardResult = result as HealthInsuranceCardResult
-                    val resultStr = CommonUtils.stringFromResult(healthCardResult)
-                    showHealthCardResults(null, null, null, healthCardResult.frontImage, healthCardResult.backImage, null, null, resultStr)
-                    AcuantDocumentProcessor.deleteInstance(healthCardResult.instanceID, DeleteType.MedicalCard, object : DeleteListener
-                    {
-                        override fun instanceDeleted(success: Boolean) {
-                            if (success) {
-                                Log.d("DELETE", "Medical Card Instance Deleted successfully")
-                            }
-                        }
-
-                    })
-
-                }
-            }
-
-        })
-    }
-
-
     // Process Front image
     private fun processFrontOfDocument() {
         this@MainActivity.runOnUiThread {
@@ -759,7 +554,6 @@ class MainActivity : AppCompatActivity() {
                             this@MainActivity.runOnUiThread {
                                 val alert = AlertDialog.Builder(this@MainActivity)
                                 alert.setTitle("Message")
-                                //alert.setMessage("Scan back side of document.")
                                 alert.setMessage(R.string.scan_back_side_id)
                                 alert.setPositiveButton("OK") { dialog, _ ->
                                     dialog.dismiss()
@@ -777,14 +571,12 @@ class MainActivity : AppCompatActivity() {
                             alert.setMessage("Capture Selfie Image")
                             alert.setPositiveButton("OK") { dialog, _ ->
                                 dialog.dismiss()
-                                setProgress(true, "Getting Data...")
                                 showFrontCamera()
-                                getData()
+                                setProgress(true, "Getting Live Photo...")
                             }
                             alert.setNegativeButton("CANCEL") { dialog, _ ->
                                 facialLivelinessResultString = "Facial Liveliness Failed"
-                                setProgress(true, "Getting Data...")
-                                getData()
+                                showTruliooConfirm()
                                 dialog.dismiss()
                             }
                             alert.show()
@@ -813,125 +605,6 @@ class MainActivity : AppCompatActivity() {
             })
     }
 
-
-    //Upload Back side of Driving License
-    private fun uploadBackImageOfDocument() {
-
-        val idOptions = IdOptions()
-        idOptions.cardSide = CardSide.Back
-        idOptions.isHealthCard = false
-        idOptions.isRetrying = false
-
-        val idData = IdData()
-        idData.image = capturedBackImage!!.image
-        idData.barcodeString = capturedBarcodeString
-
-        AcuantDocumentProcessor.uploadImage(documentInstanceID, idData, idOptions, object:UploadImageListener{
-            override fun imageUploaded(error: Error?, classification: Classification?) {
-                if (error == null) {
-                    getData()
-                }
-            }
-        })
-    }
-
-    // Get data
-    fun getData() {
-        AcuantDocumentProcessor.getData(documentInstanceID,false, object : GetDataListener {
-            override fun processingResultReceived(result: ProcessingResult?) {
-                if (result == null || result.error != null) {
-                    this@MainActivity.runOnUiThread {
-                        setProgress(false)
-                    }
-                    val alert = AlertDialog.Builder(this@MainActivity)
-                    alert.setTitle("Error")
-                    if (result != null) {
-                        alert.setMessage(result.error.errorDescription)
-                    } else {
-                        alert.setMessage(ErrorDescriptions.ERROR_DESC_CouldNotGetConnectData)
-                    }
-                    alert.setPositiveButton("OK") { dialog, _ ->
-                        dialog.dismiss()
-                    }
-                    alert.show()
-                    return
-                } else if ((result as IDResult).fields == null || result.fields.dataFieldReferences == null) {
-                    this@MainActivity.runOnUiThread {
-                        setProgress(false)
-                    }
-                    val alert = AlertDialog.Builder(this@MainActivity)
-                    alert.setTitle("Error")
-                    alert.setMessage("Unknown error happened.Could not extract data")
-                    alert.setPositiveButton("OK") { dialog, _ ->
-                        dialog.dismiss()
-                    }
-                    alert.show()
-                    return
-
-                }
-                var docNumber = ""
-                var cardType = "ID1"
-                var frontImageUri: String? = null
-                var backImageUri: String? = null
-                var signImageUri: String? = null
-                var faceImageUri: String? = null
-                var resultString: String? = ""
-                val fieldReferences = result.fields.dataFieldReferences
-                for (reference in fieldReferences) {
-                    if (reference.key == "Document Class Name" && reference.type == "string") {
-                        if (reference.value == "Driver License") {
-                            cardType = "ID1"
-                        } else if (reference.value == "Passport") {
-                            cardType = "ID3"
-                        }
-                    } else if (reference.key == "Document Number" && reference.type == "string") {
-                        docNumber = reference.value
-                    } else if (reference.key == "Photo" && reference.type == "uri") {
-                        faceImageUri = reference.value
-                    } else if (reference.key == "Signature" && reference.type == "uri") {
-                        signImageUri = reference.value
-                    }
-                }
-
-                for (image in result.images.images) {
-                    if (image.side == 0) {
-                        frontImageUri = image.uri
-                    } else if (image.side == 1) {
-                        backImageUri = image.uri
-                    }
-                }
-
-                for (reference in fieldReferences) {
-                    if (reference.type == "string") {
-                        resultString = resultString + reference.key + ":" + reference.value + System.lineSeparator()
-                    }
-                }
-
-                resultString = "Authentication Result : " +
-                        AuthenticationResult.getString(Integer.parseInt(result.result)) +
-                        System.lineSeparator() +
-                        System.lineSeparator() +
-                        resultString
-
-                thread {
-                    val frontImage = loadAssureIDImage(frontImageUri, Credential.get())
-                    val backImage = loadAssureIDImage(backImageUri, Credential.get())
-                    val faceImage = loadAssureIDImage(faceImageUri, Credential.get())
-                    val signImage = loadAssureIDImage(signImageUri, Credential.get())
-                    capturedFaceImage = faceImage
-                    MainActivity@ capturingImageData = false
-                    while (capturingSelfieImage) {
-                        Thread.sleep(100)
-                    }
-                    this@MainActivity.runOnUiThread {
-                        setProgress(false)
-                        showResults(result.biographic.birthDate, result.biographic.expirationDate, docNumber, frontImage, backImage, faceImage, signImage, resultString, cardType)
-                    }
-                }
-            }
-        })
-    }
-
     //process Facial Match
     fun processFacialMatch() {
         //MainActivity@ capturingFacialMatch = true
@@ -945,7 +618,7 @@ class MainActivity : AppCompatActivity() {
                 facialMatchData.faceImageTwo = capturedSelfieImage
 
                 if(facialMatchData.faceImageOne != null && facialMatchData.faceImageTwo != null){
-                    setProgress(true, "Matching selfie...")
+                    setProgress(true, "Processing selfie...")
                     AcuantFaceMatch.processFacialMatch(facialMatchData, FacialMatchListener { result ->
                         this@MainActivity.runOnUiThread {
                             setProgress(false)
@@ -994,61 +667,17 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(classificationErrorIntent, Constants.REQUEST_RETRY)
     }
 
-    //Show Health card Results
-    fun showHealthCardResults(dateOfBirth: String?, dateOfExpiry: String?, documentNumber: String?, frontImage: Bitmap?, backImage: Bitmap?, faceImage: Bitmap?, signImage: Bitmap?, resultString: String?) {
-        ProcessedData.cleanup()
-        ProcessedData.frontImage = frontImage
-        ProcessedData.backImage = backImage
-        ProcessedData.faceImage = faceImage
-        ProcessedData.signImage = signImage
-        ProcessedData.dateOfBirth = dateOfBirth
-        ProcessedData.dateOfExpiry = dateOfExpiry
-        ProcessedData.documentNumber = documentNumber
-        ProcessedData.isHealthCard = true
-        ProcessedData.formattedString = resultString
-        val resultIntent = Intent(
-                this@MainActivity,
-                ResultActivity::class.java
-        )
-        startActivity(resultIntent)
-    }
-
-    // Show ID Result
-    fun showResults(dateOfBirth: String?, dateOfExpiry: String?, documentNumber: String?, frontImage: Bitmap?, backImage: Bitmap?, faceImage: Bitmap?, signImage: Bitmap?, resultString: String?, cardType: String) {
-        ProcessedData.cleanup()
-        ProcessedData.frontImage = frontImage
-        ProcessedData.backImage = backImage
-        ProcessedData.faceImage = faceImage
-        ProcessedData.signImage = signImage
-        ProcessedData.dateOfBirth = dateOfBirth
-        ProcessedData.dateOfExpiry = dateOfExpiry
-        ProcessedData.documentNumber = documentNumber
-        ProcessedData.cardType = cardType
-        if (!isHealthCard) {
-            thread {
-                while (capturingFacialMatch) {
-                    Thread.sleep(100)
-                }
-                this@MainActivity.runOnUiThread {
-                    facialResultString = if(facialResultString == null) "Facial Match Failed" else facialResultString
-                    ProcessedData.formattedString = facialLivelinessResultString + System.lineSeparator() + facialResultString + System.lineSeparator() + resultString
-                    val resultIntent = Intent(
-                            this@MainActivity,
-                            ResultActivity::class.java
-                    )
-                    setProgress(false)
-                    startActivity(resultIntent)
-                }
-
-            }
-            return
-        }
-        ProcessedData.formattedString = resultString
-        val resultIntent = Intent(
-                this@MainActivity,
-                ResultActivity::class.java
-        )
+    fun showTruliooConfirm() {
         setProgress(false)
+        TruliooInformationStorage.cleanup()
+        TruliooInformationStorage.frontImage = capturedFrontImage?.image
+        TruliooInformationStorage.backImage = capturedBackImage?.image
+        TruliooInformationStorage.selfieImage = capturedSelfieImage
+
+        val resultIntent = Intent(
+                this@MainActivity,
+                TruliooConfirmationActivity::class.java
+        )
         startActivity(resultIntent)
     }
 
@@ -1074,19 +703,6 @@ class MainActivity : AppCompatActivity() {
         return image
     }
 
-    fun loadAssureIDImage(url: String?, credential: Credential?): Bitmap? {
-        if (url != null && credential != null) {
-            val c = URL(url).openConnection() as HttpURLConnection
-            val userpass = credential.username + ":" + credential.password
-            val basicAuth = "Basic " + String(Base64.encode(userpass.toByteArray(), Base64.DEFAULT))
-            c.setRequestProperty("Authorization", basicAuth)
-            c.useCaches = false
-            c.connect()
-            return BitmapFactory.decodeStream(c.inputStream)
-        }
-        return null
-    }
-
     fun isBackSideRequired(classification : Classification?):Boolean{
         var isBackSideScanRequired = false
         if (classification?.type != null && classification.type.supportedImages != null) {
@@ -1103,4 +719,11 @@ class MainActivity : AppCompatActivity() {
         return isBackSideScanRequired
     }
 
+    fun testTruliooConnection(view: View){
+        var test = Intent(
+                this@MainActivity,
+                TruliooTestConnectionActivity::class.java
+        )
+        startActivity(test)
+    }
 }

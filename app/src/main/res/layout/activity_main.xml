@@ -8,6 +8,20 @@
     android:id="@+id/main_layout">
 
     <Button
+        android:id="@+id/testTruliooConnectionButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="30dp"
+        android:gravity="center"
+        android:onClick="testTruliooConnection"
+        android:text="Test Trulioo Connection"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.635" />
+
+    <Button
         android:id="@+id/main_id_passport"
         android:gravity="center"
         app:layout_constraintTop_toTopOf="parent"
@@ -19,25 +33,17 @@
         android:layout_height="wrap_content"
         android:onClick="idPassPortClicked"
         android:text="@string/id_passport_button_text"/>
-    <Button
-        android:id="@+id/main_health_card"
-        android:layout_margin="30dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/health_insurance_button_text"
-        android:onClick="healthInsuranceClicked"
-        app:layout_constraintTop_toBottomOf="@id/main_id_passport">
-    </Button>
 
     <Switch
-        android:layout_margin="30dp"
         android:id="@+id/autoCaptureSwitch"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/auto_capture"
+        android:layout_margin="30dp"
+        android:layout_marginTop="30dp"
         android:checked="true"
-        app:layout_constraintTop_toBottomOf="@id/main_health_card"
-        />
+        android:text="@string/auto_capture"
+        app:layout_constraintTop_toBottomOf="@+id/testTruliooConnectionButton"
+        tools:layout_editor_absoluteX="30dp" />
 
     <Switch
         android:layout_margin="30dp"

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">SampleApp</string>
+    <string name="app_name">TruliooSampleApp</string>
     <string name="description_info">Info</string>
     <string name="request_permission">This sample needs camera permission.</string>
     <string name="acuant_camera_error">This device does not support Camera2 API.</string>
@@ -17,4 +17,15 @@
     <string name="health_insurance_button_text">Health Insurance Card</string>
     <string name="auto_capture">Auto Capture</string>
     <string name="ip_liveness_enabled">IP Liveness Enabled</string>
+
+    <string-array name="country_arrays">
+        <item>CA</item>
+        <item>US</item>
+    </string-array>
+
+    <string-array name="Document_arrays">
+        <item>DrivingLicence</item>
+        <item>Passport</item>
+    </string-array>
+
 </resources>

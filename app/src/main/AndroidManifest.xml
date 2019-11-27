@@ -25,6 +25,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <activity android:name=".TruliooTestConnectionActivity"></activity>
+        <activity android:name=".TruliooResultActivity" />
+        <activity android:name=".TruliooConfirmationActivity" />
         <activity
             android:name=".MainActivity"
             android:screenOrientation="portrait">
@@ -49,9 +52,10 @@
             android:noHistory="true"
             android:screenOrientation="portrait" />
         <activity android:name=".ClassificationFailureActivity" />
-        <activity android:name=".FacialLivenessActivity"
+        <activity
+            android:name=".FacialLivenessActivity"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppCompat.NoActionBar"></activity>
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
     </application>
 
 </manifest>
