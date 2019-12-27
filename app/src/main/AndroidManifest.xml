@@ -51,7 +51,6 @@
             android:name=".NFCConfirmationActivity"
             android:noHistory="true"
             android:screenOrientation="portrait" />
-        <activity android:name=".ClassificationFailureActivity" />
         <activity
             android:name=".FacialLivenessActivity"
             android:screenOrientation="portrait"

@@ -7,13 +7,12 @@
     android:layout_height="match_parent">
 
     <TextView
-        android:id="@+id/textView10"
+        android:id="@+id/documentTypeBox"
         android:layout_width="164dp"
         android:layout_height="25dp"
         android:layout_marginStart="44dp"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="56dp"
         android:layout_marginEnd="24dp"
-        android:text=" Document Type:"
         android:textAppearance="@style/TextAppearance.AppCompat.Widget.ActionBar.Menu"
         android:textColor="#090808"
         app:layout_constraintEnd_toEndOf="parent"
@@ -21,19 +20,20 @@
         app:layout_constraintStart_toEndOf="@+id/selfieImage"
         app:layout_constraintTop_toBottomOf="@+id/countryDropDown" />
 
-    <Spinner
-        android:id="@+id/documentDropDown"
-        android:layout_width="172dp"
-        android:layout_height="21dp"
+    <TextView
+        android:id="@+id/textView10"
+        android:layout_width="164dp"
+        android:layout_height="25dp"
         android:layout_marginStart="44dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        android:entries="@array/Document_arrays"
-        android:spinnerMode="dropdown"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="24dp"
+        android:text="Document Type:"
+        android:textAppearance="@style/TextAppearance.AppCompat.Widget.ActionBar.Menu"
+        android:textColor="#090808"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toEndOf="@+id/selfieImage"
-        app:layout_constraintTop_toBottomOf="@+id/textView10" />
+        app:layout_constraintTop_toBottomOf="@+id/countryDropDown" />
 
     <TextView
         android:id="@+id/textView9"
@@ -123,11 +123,8 @@
         android:layout_height="25dp"
         android:layout_marginStart="53dp"
         android:layout_marginTop="16dp"
-        android:layout_marginEnd="62dp"
         android:text="Live Photo"
         android:textAppearance="@style/TextAppearance.AppCompat.Widget.ActionBar.Menu"
-        app:layout_constraintEnd_toStartOf="@+id/documentDropDown"
-        app:layout_constraintHorizontal_bias="0.125"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/selfieImage" />
 

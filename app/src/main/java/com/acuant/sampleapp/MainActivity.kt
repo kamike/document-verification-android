@@ -69,12 +69,12 @@ class MainActivity : AppCompatActivity() {
     private var capturingSelfieImage: Boolean = false
     private var facialResultString: String? = null
     private var facialLivelinessResultString: String? = null
-    private var captureWaitTime: Int = 0
     private var documentInstanceID: String? = null
     private var autoCaptureEnabled: Boolean = true
     private var numerOfClassificationAttempts: Int = 0
     private var isInitialized = false
     private var isIPLivenessEnabled = false
+    private var documentTypeDropDown:Spinner? = null
 
     fun cleanUpTransaction() {
         facialResultString = null
@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         capturingImageData = true
         documentInstanceID = null
         numerOfClassificationAttempts = 0
-
+        TruliooInformationStorage.cleanup()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,6 +100,8 @@ class MainActivity : AppCompatActivity() {
         autoCaptureSwitch.setOnCheckedChangeListener { _, isChecked ->
             autoCaptureEnabled = isChecked
         }
+
+        documentTypeDropDown = findViewById<Spinner>(R.id.docTypeDropDown)
 
         progressDialog = findViewById(R.id.main_progress_layout)
         progressText = findViewById(R.id.pbText)
@@ -155,26 +157,6 @@ class MainActivity : AppCompatActivity() {
                         }
 
                     })
-
-            // Or, if required to initialize without a config file , then can be done the following way
-            /*Credential.init("xxxx",
-                    "xxxx",
-                    "xxxx",
-                    "https://frm.acuant.net",
-                    "https://services.assureid.net",
-                    "https://medicscan.acuant.net")
-
-            AcuantInitializer.intialize(null, this.applicationContext, listOf(ImageProcessorInitializer()),
-                    object: IAcuantPackageCallback {
-                        override fun onInitializeSuccess() {
-                            getFacialLivenessCredentials(callback)
-                        }
-
-                        override fun onInitializeFailed(error: List<Error>) {
-                            callback.onInitializeFailed(error)
-                        }
-                    })*/
-
         }
         catch(e: AcuantException){
             Log.e("Acuant Error", e.toString())
@@ -325,6 +307,7 @@ class MainActivity : AppCompatActivity() {
         }
         alert.setNegativeButton("NO") { dialog, _ ->
             dialog.dismiss()
+            showTruliooConfirm()
             capturingSelfieImage = false
             facialLivelinessResultString = "Facial Liveliness Failed"
         }
@@ -379,10 +362,10 @@ class MainActivity : AppCompatActivity() {
             alert.show()
         }
         else{
+            TruliooInformationStorage.cardType = documentTypeDropDown?.getSelectedItem().toString()
             if(isInitialized){
                 frontCaptured = false
                 cleanUpTransaction()
-                captureWaitTime = 0
                 showDocumentCaptureCamera()
             }
             else{
@@ -394,7 +377,6 @@ class MainActivity : AppCompatActivity() {
                             setProgress(false)
                             frontCaptured = false
                             cleanUpTransaction()
-                            captureWaitTime = 0
                             showDocumentCaptureCamera()
                         }
                     }
@@ -417,7 +399,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    //Show Rear Camera to Capture Image of ID,Passport or Health Insruance Card
+    //Show Rear Camera to Capture Image of ID or Passport
     fun showDocumentCaptureCamera() {
         CapturedImage.barcodeString = null
         val cameraIntent = Intent(
@@ -496,113 +478,37 @@ class MainActivity : AppCompatActivity() {
 
     // Process Front image
     private fun processFrontOfDocument() {
-        this@MainActivity.runOnUiThread {
-            setProgress(true, "Uploading  & Classifying...")
-        }
-
-        val idOptions = IdOptions()
-        idOptions.cardSide = CardSide.Front
-        idOptions.isHealthCard = false
-        idOptions.isRetrying = isRetrying
-
-        val idData = IdData()
-        idData.image = capturedFrontImage!!.image
-
-        if (isRetrying) {
-            //CommonUtils.saveImage(idData.image,"second")
-            uploadFrontImageOfDocument(documentInstanceID!!, idData, idOptions)
-
+        frontCaptured = true
+        if (isBackSideRequired()) {
+            this@MainActivity.runOnUiThread {
+                val alert = AlertDialog.Builder(this@MainActivity)
+                alert.setTitle("Message")
+                alert.setMessage(R.string.scan_back_side_id)
+                alert.setPositiveButton("OK") { dialog, _ ->
+                    dialog.dismiss()
+                    showDocumentCaptureCamera()
+                }
+                alert.setNegativeButton("CANCEL") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                alert.show()
+            }
         } else {
-            AcuantDocumentProcessor.createInstance(idOptions, object: CreateInstanceListener{
-                override fun instanceCreated(instanceId: String?, error: Error?) {
-                    if (error == null) {
-                        // Success : Instance Created
-                        documentInstanceID = instanceId
-                        uploadFrontImageOfDocument(instanceId!!, idData, idOptions)
-
-                    } else {
-                        // Failure
-                        this@MainActivity.runOnUiThread {
-                            setProgress(false)
-                            val alert = AlertDialog.Builder(this@MainActivity)
-                            alert.setTitle("Error")
-                            alert.setMessage(error.errorDescription)
-                            alert.setPositiveButton("OK") { dialog, _ ->
-                                dialog.dismiss()
-                            }
-                            alert.show()
-                        }
-
-                    }
-                }
-            })
+            val alert = AlertDialog.Builder(this@MainActivity)
+            alert.setTitle("Message")
+            alert.setMessage("Capture Selfie Image")
+            alert.setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+                showFrontCamera()
+                setProgress(true, "Getting Live Photo...")
+            }
+            alert.setNegativeButton("CANCEL") { dialog, _ ->
+                facialLivelinessResultString = "Facial Liveliness Skipped"
+                showTruliooConfirm()
+                dialog.dismiss()
+            }
+            alert.show()
         }
-    }
-
-    // Upload front Image of Driving License
-    fun uploadFrontImageOfDocument(instanceId: String, idData: IdData, idOptions: IdOptions) {
-        numerOfClassificationAttempts += 1
-        // Upload front Image of DL
-        Log.d("InstanceId:",instanceId)
-        AcuantDocumentProcessor.uploadImage(instanceId, idData, idOptions, object:UploadImageListener{
-                override fun imageUploaded(error: Error?, classification: Classification?) {
-                    if (error == null) {
-                        // Successfully uploaded
-                        setProgress(false)
-                        frontCaptured = true
-                        if (isBackSideRequired(classification)) {
-                            this@MainActivity.runOnUiThread {
-                                val alert = AlertDialog.Builder(this@MainActivity)
-                                alert.setTitle("Message")
-                                alert.setMessage(R.string.scan_back_side_id)
-                                alert.setPositiveButton("OK") { dialog, _ ->
-                                    dialog.dismiss()
-                                    captureWaitTime = 2
-                                    showDocumentCaptureCamera()
-                                }
-                                alert.setNegativeButton("CANCEL") { dialog, _ ->
-                                    dialog.dismiss()
-                                }
-                                alert.show()
-                            }
-                        } else {
-                            val alert = AlertDialog.Builder(this@MainActivity)
-                            alert.setTitle("Message")
-                            alert.setMessage("Capture Selfie Image")
-                            alert.setPositiveButton("OK") { dialog, _ ->
-                                dialog.dismiss()
-                                showFrontCamera()
-                                setProgress(true, "Getting Live Photo...")
-                            }
-                            alert.setNegativeButton("CANCEL") { dialog, _ ->
-                                facialLivelinessResultString = "Facial Liveliness Failed"
-                                showTruliooConfirm()
-                                dialog.dismiss()
-                            }
-                            alert.show()
-                        }
-
-                    } else {
-                        // Failure
-                        this@MainActivity.runOnUiThread {
-                            setProgress(false)
-                            if (error.errorCode == ErrorCodes.ERROR_CouldNotClassifyDocument) {
-                                showClassificationError()
-                            } else {
-                                setProgress(false)
-                                val alert = AlertDialog.Builder(this@MainActivity)
-                                alert.setTitle("Error")
-                                alert.setMessage(error.errorDescription)
-                                alert.setPositiveButton("OK") { dialog, _ ->
-                                    dialog.dismiss()
-                                }
-                                alert.show()
-                            }
-                        }
-                    }
-                }
-
-            })
     }
 
     //process Facial Match
@@ -658,15 +564,6 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(confirmationIntent, Constants.REQUEST_CONFIRMATION)
     }
 
-    //Show Classification Error
-    fun showClassificationError() {
-        val classificationErrorIntent = Intent(
-                this@MainActivity,
-                ClassificationFailureActivity::class.java
-        )
-        startActivityForResult(classificationErrorIntent, Constants.REQUEST_RETRY)
-    }
-
     fun showTruliooConfirm() {
         setProgress(false)
         TruliooInformationStorage.cleanup()
@@ -703,20 +600,8 @@ class MainActivity : AppCompatActivity() {
         return image
     }
 
-    fun isBackSideRequired(classification : Classification?):Boolean{
-        var isBackSideScanRequired = false
-        if (classification?.type != null && classification.type.supportedImages != null) {
-            val list = classification.type.supportedImages as ArrayList<HashMap<*, *>>
-            for (i in list.indices) {
-                val map = list[i]
-                if (map["Light"] == 0) {
-                    if (map["Side"] == 1) {
-                        isBackSideScanRequired = true
-                    }
-                }
-            }
-        }
-        return isBackSideScanRequired
+    fun isBackSideRequired():Boolean{
+        return !(TruliooInformationStorage.cardType != null && TruliooInformationStorage.cardType.equals("Passport"))
     }
 
     fun testTruliooConnection(view: View){

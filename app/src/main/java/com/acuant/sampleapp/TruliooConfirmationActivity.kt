@@ -12,7 +12,7 @@ class TruliooConfirmationActivity : AppCompatActivity() {
     var firstNameBox:EditText? = null
     var lastNameBox:EditText? = null
     var countryDropDown:Spinner? = null
-    var documentTypeDropDown:Spinner? = null
+    var documentTypeTextBox:TextView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,7 +31,8 @@ class TruliooConfirmationActivity : AppCompatActivity() {
         // https://developer.trulioo.com/docs/document-verification-step-3-get-country-codes
         // https://developer.trulioo.com/docs/document-verification-step-4-get-document-types
         countryDropDown = findViewById<Spinner>(R.id.countryDropDown)
-        documentTypeDropDown = findViewById<Spinner>(R.id.documentDropDown)
+        documentTypeTextBox = findViewById<TextView>(R.id.documentTypeBox)
+        documentTypeTextBox?.text = TruliooInformationStorage.cardType
 
         val frontImageBox = findViewById<ImageView>(R.id.frontImage)
         if(frontImage != null){
@@ -58,7 +59,6 @@ class TruliooConfirmationActivity : AppCompatActivity() {
         var lastName = lastNameBox?.text.toString().trim()
         TruliooInformationStorage.firstName = firstName
         TruliooInformationStorage.lastName = lastName
-        TruliooInformationStorage.cardType = documentTypeDropDown?.getSelectedItem().toString()
         TruliooInformationStorage.countryCode = countryDropDown?.getSelectedItem().toString()
 
         if(firstName.isNullOrBlank() || lastName.isNullOrBlank()){

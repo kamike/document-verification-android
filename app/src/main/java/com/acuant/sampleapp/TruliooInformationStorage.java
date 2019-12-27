@@ -19,7 +19,5 @@ public class TruliooInformationStorage {
         selfieImage = null;
         firstName = null;
         lastName = null;
-        cardType = "DrivingLicence";
-        countryCode = "CA";
     }
 }
