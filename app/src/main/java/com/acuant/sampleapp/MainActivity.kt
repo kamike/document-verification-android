@@ -146,10 +146,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun initializeAcuantSdk(callback:IAcuantPackageCallback){
         try{
-           AcuantInitializer.intialize("acuant.config.xml", this, listOf(ImageProcessorInitializer()),
+            AcuantInitializer.intialize("acuant.config.xml", this, listOf(ImageProcessorInitializer()),
                     object: IAcuantPackageCallback{
                         override fun onInitializeSuccess() {
-                            getFacialLivenessCredentials(callback)
+                            if(Credential.get().subscription == null || Credential.get().subscription.isEmpty() ){
+                                isIPLivenessEnabled = false
+                                callback.onInitializeSuccess()
+                            } else{
+                                getFacialLivenessCredentials(callback)
+                            }
                         }
 
                         override fun onInitializeFailed(error: List<Error>) {

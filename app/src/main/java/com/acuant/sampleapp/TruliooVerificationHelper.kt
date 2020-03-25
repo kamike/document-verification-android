@@ -8,15 +8,18 @@ import java.lang.NullPointerException
 
 public class TruliooVerificationHelper {
         //Enter Trulioo credentials
-        private val username = ""
-        private val password = ""
+        private val username = "XXX"
+        private val password = "XXX"
         private var apiClient:ApiClient? = null
 
         fun init(){
                 apiClient = ApiClient()
                 apiClient?.setUsername(username)
                 apiClient?.setPassword(password)
-                // Set server address,
+                // Set server address
+                // GG20
+                // apiClient?.setBasePath("https://api.globaldatacompany.com/")
+                // GG25
                 apiClient?.setBasePath("https://api.globalgateway.io/")
         }
 

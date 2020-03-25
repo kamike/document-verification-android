@@ -42,16 +42,6 @@
             android:name=".ConfirmationActivity"
             android:screenOrientation="portrait" />
         <activity
-            android:name=".ResultActivity"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".NFCResultActivity"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".NFCConfirmationActivity"
-            android:noHistory="true"
-            android:screenOrientation="portrait" />
-        <activity
             android:name=".FacialLivenessActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
