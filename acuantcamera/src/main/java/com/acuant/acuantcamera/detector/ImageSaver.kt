@@ -1,4 +1,4 @@
-package com.acuant.acuantcamera.helper
+package com.acuant.acuantcamera.detector
 
 import android.graphics.*
 import android.media.Image
@@ -14,11 +14,11 @@ import java.io.*
 /**
  * Saves a JPEG [Image] into the specified [File].
  */
-internal interface ImageSaveHandler{
+interface ImageSaveHandler{
     fun onSave()
 }
 
-internal class ImageSaver(
+class ImageSaver(
         /**
          * The JPEG image
          */
@@ -41,7 +41,7 @@ internal class ImageSaver(
         //check if it needs to be rotated
         if(orientation < DEGREES_TO_ROTATE_IMAGE) {
             //code for rotating the image
-            val rotated = rotateImage(BitmapFactory.decodeByteArray(bytes, 0, bytes.size),180f)
+            val rotated = rotateImage(BitmapFactory.decodeByteArray(bytes, 0, bytes.size), 180f)
             val stream = ByteArrayOutputStream()
             rotated.compress(CompressFormat.JPEG, 100, stream)
             rotated.recycle()
@@ -77,7 +77,7 @@ internal class ImageSaver(
             return NV21toJPEG(YUV420toNV21(image), image.getWidth(), image.getHeight(), 100)
         }
 
-        private fun rotateImage(img: Bitmap, degree: Float): Bitmap {
+        fun rotateImage(img: Bitmap, degree: Float): Bitmap {
             val matrix = Matrix()
             matrix.setRotate(degree)
             val rotatedImg = Bitmap.createBitmap(img, 0, 0, img.width, img.height, matrix, true)

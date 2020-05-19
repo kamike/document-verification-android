@@ -28,4 +28,9 @@
     <string name="acuant_camera_hold_steady">HOLD STEADY</string>
     <string name="acuant_camera_capturing">CAPTURING</string>
 
+    <string name="acuant_reading_mrz">Reading MRZ</string>
+    <string name="acuant_align_mrz">Align</string>
+    <string name="acuant_closer_mrz">Move Closer</string>
+    <string name="acuant_glare_mrz">Try Repositioning</string>
+    <string name="acuant_read_mrz">Read Successful</string>
 </resources>
