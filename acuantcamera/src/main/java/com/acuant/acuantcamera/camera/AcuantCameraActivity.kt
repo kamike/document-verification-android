@@ -92,8 +92,13 @@ class AcuantCameraActivity : AppCompatActivity(), ICameraActivityFinish {
                 ConnectionResult.SERVICE_INVALID
             }
         } else {
-            unserializedOptions as AcuantCameraOptions
-        }
+            if (!isInMrzCapture) {
+                val cameraIntent = Intent(
+                        this@AcuantCameraActivity,
+                        DocumentCaptureActivity::class.java
+                )
+                cameraIntent.putExtra(ACUANT_EXTRA_IS_AUTO_CAPTURE, options.autoCapture)
+                cameraIntent.putExtra(ACUANT_EXTRA_CAMERA_OPTIONS, options)
 
             if (resultCode != ConnectionResult.SUCCESS) {
                 options.useGMS = false
