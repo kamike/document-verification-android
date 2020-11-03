@@ -8,8 +8,8 @@ import java.lang.NullPointerException
 
 public class TruliooVerificationHelper {
         //Enter Trulioo credentials
-        private val username = "XXX"
-        private val password = "XXX"
+        private val username = "Username"
+        private val password = "Password"
         private var apiClient:ApiClient? = null
 
         fun init(){
