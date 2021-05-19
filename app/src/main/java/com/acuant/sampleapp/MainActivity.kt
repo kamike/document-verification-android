@@ -1,14 +1,19 @@
 package com.acuant.sampleapp
 
+import android.Manifest
 import android.app.AlertDialog
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.location.LocationManager
 import android.net.ConnectivityManager
-import android.os.AsyncTask
 import android.os.Bundle
+import android.support.v4.app.ActivityCompat
+import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Base64
 import android.util.Log
@@ -16,7 +21,6 @@ import android.view.Surface
 import android.view.View
 import android.view.WindowManager
 import android.widget.*
-import com.acuant.acuantcamera.CapturedImage
 import com.acuant.acuantcamera.camera.AcuantCameraActivity
 import com.acuant.acuantcamera.camera.AcuantCameraOptions
 import com.acuant.acuantcamera.constant.*
@@ -24,18 +28,15 @@ import com.acuant.acuantcommon.exception.AcuantException
 import com.acuant.acuantcommon.initializer.AcuantInitializer
 import com.acuant.acuantcommon.initializer.IAcuantPackageCallback
 import com.acuant.acuantcommon.model.*
-import com.acuant.acuantcommon.type.CardSide
-import com.acuant.acuantdocumentprocessing.AcuantDocumentProcessor
-import com.acuant.acuantdocumentprocessing.model.*
-import com.acuant.acuantdocumentprocessing.service.listener.CreateInstanceListener
-import com.acuant.acuantdocumentprocessing.service.listener.DeleteListener
-import com.acuant.acuantdocumentprocessing.service.listener.GetDataListener
-import com.acuant.acuantdocumentprocessing.service.listener.UploadImageListener
 import com.acuant.acuantfacematchsdk.AcuantFaceMatch
 import com.acuant.acuantfacematchsdk.model.FacialMatchData
 import com.acuant.acuantfacematchsdk.service.FacialMatchListener
 import com.acuant.acuanthgliveness.model.FaceCapturedImage
+import com.acuant.acuantimagepreparation.AcuantImagePreparation
+import com.acuant.acuantimagepreparation.background.EvaluateImageListener
 import com.acuant.acuantimagepreparation.initializer.ImageProcessorInitializer
+import com.acuant.acuantimagepreparation.model.AcuantImage
+import com.acuant.acuantimagepreparation.model.CroppingData
 import com.acuant.acuantipliveness.AcuantIPLiveness
 import com.acuant.acuantipliveness.constant.FacialCaptureConstant
 import com.acuant.acuantipliveness.facialcapture.model.FacialCaptureResult
@@ -43,27 +44,23 @@ import com.acuant.acuantipliveness.facialcapture.model.FacialSetupResult
 import com.acuant.acuantipliveness.facialcapture.service.FacialCaptureCredentialListener
 import com.acuant.acuantipliveness.facialcapture.service.FacialCaptureLisenter
 import com.acuant.acuantipliveness.facialcapture.service.FacialSetupLisenter
-import com.acuant.sampleapp.backgroundtasks.CroppingTask
-import com.acuant.sampleapp.backgroundtasks.CroppingTaskListener
 import com.acuant.sampleapp.utils.CommonUtils
+import org.joda.time.DateTime
 import java.io.*
-import java.net.HttpURLConnection
-import java.net.URL
-import java.util.*
 import kotlin.concurrent.thread
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 
 class MainActivity : AppCompatActivity() {
-    //TODO: Swap away from deprecated method of showing progress
     private var progressDialog: LinearLayout? = null
     private var progressText: TextView? = null
-    private var capturedFrontImage: Image? = null
-    private var capturedBackImage: Image? = null
     private var capturedSelfieImage: Bitmap? = null
     private var capturedFaceImage: Bitmap? = null
     private var capturedBarcodeString: String? = null
     private var frontCaptured: Boolean = false
     private var isRetrying: Boolean = false
+    private var currentRetries: Int = 0
     private var idButton: Button? = null
     private var capturingImageData: Boolean = true
     private var capturingSelfieImage: Boolean = false
@@ -75,15 +72,17 @@ class MainActivity : AppCompatActivity() {
     private var isInitialized = false
     private var isIPLivenessEnabled = false
     private var documentTypeDropDown:Spinner? = null
+    private var recentImage: AcuantImage? = null
+
+    private val shouldUseLocation : Boolean = true
 
     fun cleanUpTransaction() {
         facialResultString = null
-        capturedFrontImage = null
-        capturedBackImage = null
         capturedSelfieImage = null
         capturedFaceImage = null
         capturedBarcodeString = null
         isRetrying = false
+        currentRetries = 0
         capturingImageData = true
         documentInstanceID = null
         numerOfClassificationAttempts = 0
@@ -99,6 +98,7 @@ class MainActivity : AppCompatActivity() {
         val autoCaptureSwitch = findViewById<Switch>(R.id.autoCaptureSwitch)
         autoCaptureSwitch.setOnCheckedChangeListener { _, isChecked ->
             autoCaptureEnabled = isChecked
+            TruliooInformationStorage.isAutoCaptureEnabled = isChecked
         }
 
         documentTypeDropDown = findViewById<Spinner>(R.id.docTypeDropDown)
@@ -106,8 +106,33 @@ class MainActivity : AppCompatActivity() {
         progressDialog = findViewById(R.id.main_progress_layout)
         progressText = findViewById(R.id.pbText)
 
-        setProgress(true, "Initializing...")
+    }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        when (requestCode) {
+            1 -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    if ((ContextCompat.checkSelfPermission(this@MainActivity,
+                                    Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
+                        getLocation()
+                    }
+                } else {
+                    println("Location Permission DENIED")
+                    showDocumentCaptureCamera()
+                }
+                return
+            }
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+
+        initializeSDK()
+    }
+
+    private fun initializeSDK() {
+        setProgress(true, "Initializing...")
         initializeAcuantSdk(object: IAcuantPackageCallback{
             override fun onInitializeSuccess() {
                 this@MainActivity.runOnUiThread {
@@ -132,6 +157,44 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    fun requestLocationCallback() {
+        setProgress(false)
+        showDocumentCaptureCamera()
+    }
+
+    fun locationFailureCallback() {
+        val alert = AlertDialog.Builder(this@MainActivity)
+        alert.setTitle("Error")
+        alert.setMessage("Could not get device location")
+        alert.setPositiveButton("OK") { dialog, _ ->
+            dialog.dismiss()
+            requestLocationCallback()
+        }
+        alert.show()
+    }
+
+    private fun getLocation() {
+        LocationService.getLocation(getSystemService(LOCATION_SERVICE) as LocationManager,
+                this@MainActivity)
+    }
+
+    private fun requestLocation() {
+        setProgress(true, "Processing...")
+        if (ContextCompat.checkSelfPermission(this@MainActivity,
+                        Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this@MainActivity,
+                            Manifest.permission.ACCESS_FINE_LOCATION)) {
+                ActivityCompat.requestPermissions(this@MainActivity,
+                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
+            } else {
+                ActivityCompat.requestPermissions(this@MainActivity,
+                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
+            }
+        } else {
+            getLocation()
+        }
+    }
+
     private fun setProgress(visible : Boolean, text : String = "") {
         if(visible) {
             progressDialog?.visibility = View.VISIBLE
@@ -149,7 +212,7 @@ class MainActivity : AppCompatActivity() {
             AcuantInitializer.intialize("acuant.config.xml", this, listOf(ImageProcessorInitializer()),
                     object: IAcuantPackageCallback{
                         override fun onInitializeSuccess() {
-                            if(Credential.get().subscription == null || Credential.get().subscription.isEmpty() ){
+                            if(Credential.get().subscription == null || Credential.get().subscription.isEmpty()){
                                 isIPLivenessEnabled = false
                                 callback.onInitializeSuccess()
                             } else{
@@ -219,61 +282,45 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == Constants.REQUEST_CAMERA_PHOTO && resultCode == AcuantCameraActivity.RESULT_SUCCESS_CODE) {
-            val bytes = readFromFile(data?.getStringExtra(ACUANT_EXTRA_IMAGE_URL))
+            val url = data?.getStringExtra(ACUANT_EXTRA_IMAGE_URL)
             capturedBarcodeString = data?.getStringExtra(ACUANT_EXTRA_PDF417_BARCODE)
-            setProgress(true, "Cropping...")
+            if (url != null) {
+                setProgress(true, "Cropping...")
+                AcuantImagePreparation.evaluateImage(this, CroppingData(url), object :
+                    EvaluateImageListener {
 
-            val croppingTask = CroppingTask(BitmapFactory.decodeByteArray(bytes, 0, bytes.size), !frontCaptured, object : CroppingTaskListener {
-                override fun croppingFinished(acuantImage: Image?, isFrontImage: Boolean) {
-                    this@MainActivity.runOnUiThread {
+                    override fun onSuccess(image: AcuantImage) {
                         setProgress(false)
+                        recentImage = image
+                        showConfirmation(!frontCaptured, false)
                     }
-                    CapturedImage.acuantImage = correctBitmapOrientation(acuantImage)
-                    showConfirmation(isFrontImage, false)
-                }
-            })
-            croppingTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, null, null, null)
 
-        }
-        else if (resultCode == Constants.REQUEST_CONFIRMATION) {
+                    override fun onError(error: Error) {
+                        showDialog(error.errorDescription)
+                    }
+                })
+            } else {
+                showDialog("Camera failed to return valid image path")
+            }
+        } else if (resultCode == Constants.REQUEST_CONFIRMATION) {
+            if (recentImage == null) {
+                handleImageError()
+                return
+            }
             val isFront = data!!.getBooleanExtra("IsFrontImage", true)
             val isConfirmed = data.getBooleanExtra("Confirmed", true)
             if (isConfirmed) {
                 if (isFront) {
-                    capturedFrontImage = CapturedImage.acuantImage
-                    processFrontOfDocument()
+                    processFrontOfDocument(recentImage!!.image)
                 } else {
-                    capturedBackImage = CapturedImage.acuantImage
-                    val alert = AlertDialog.Builder(this@MainActivity)
-                    alert.setTitle("Message")
-                    if (capturedBarcodeString != null && capturedBarcodeString!!.trim().isNotEmpty()) {
-                        alert.setMessage("Following barcode is captured.\n\n"
-                                + "Barcode String :\n\n"
-                                + capturedBarcodeString!!.subSequence(0, (capturedBarcodeString!!.length * 0.25).toInt())
-                                + "...\n\n"
-                                + "Capture Selfie Image now.")
-                    }
-                    else{
-                        alert.setMessage("Capture Selfie Image now.")
-                    }
-                    alert.setPositiveButton("OK") { dialog, _ ->
-                        setProgress(true, "Processing")
-                        showFrontCamera()
-                        dialog.dismiss()
-                    }
-                    alert.setNegativeButton("CANCEL") { dialog, _ ->
-                        facialLivelinessResultString = "Facial Liveliness Failed"
-                        capturingSelfieImage = false
-                        showTruliooConfirm()
-                        dialog.dismiss()
-                    }
-                    alert.show()
+                   processBackOfDocument(recentImage!!.image)
                 }
             } else {
                 showDocumentCaptureCamera()
             }
         } else if (resultCode == Constants.REQUEST_RETRY) {
             isRetrying = true
+            currentRetries += 1
             showDocumentCaptureCamera()
 
         } else if (requestCode == Constants.REQUEST_CAMERA_IP_SELFIE) {
@@ -291,10 +338,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         } else if (requestCode == Constants.REQUEST_CAMERA_HG_SELFIE){
+            if (FaceCapturedImage.bitmapImage == null) {
+                handleImageError()
+                return
+            }
             if(resultCode == FacialLivenessActivity.RESPONSE_SUCCESS_CODE){
-                capturedSelfieImage = FaceCapturedImage.bitmapImage
-                facialLivelinessResultString = "Facial Liveliness: true"
-                showTruliooConfirm()
+                processSelfie(FaceCapturedImage.bitmapImage!!)
             }
             else{
                 showFaceCaptureError()
@@ -365,54 +414,34 @@ class MainActivity : AppCompatActivity() {
                 dialog.dismiss()
             }
             alert.show()
-        }
-        else{
+        } else {
+            cleanUpTransaction()
             TruliooInformationStorage.cardType = documentTypeDropDown?.getSelectedItem().toString()
             if(isInitialized){
                 frontCaptured = false
-                cleanUpTransaction()
-                showDocumentCaptureCamera()
-            }
-            else{
-                setProgress(true, "Initializing...")
-                initializeAcuantSdk(object: IAcuantPackageCallback{
-                    override fun onInitializeSuccess() {
-                        this@MainActivity.runOnUiThread {
-                            isInitialized = true
-                            setProgress(false)
-                            frontCaptured = false
-                            cleanUpTransaction()
-                            showDocumentCaptureCamera()
-                        }
-                    }
 
-                    override fun onInitializeFailed(error: List<Error>) {
-                        this@MainActivity.runOnUiThread {
-                            setProgress(false)
-                            val alert = AlertDialog.Builder(this@MainActivity)
-                            alert.setTitle("Error")
-                            alert.setMessage("Could not initialize")
-                            alert.setPositiveButton("OK") { dialog, _ ->
-                                dialog.dismiss()
-                            }
-                            alert.show()
-                        }
-                    }
-
-                })
+                if (shouldUseLocation) {
+                    requestLocation()
+                } else {
+                    showDocumentCaptureCamera()
+                }
+            } else {
+                initializeSDK()
             }
         }
     }
 
     //Show Rear Camera to Capture Image of ID or Passport
     fun showDocumentCaptureCamera() {
-        CapturedImage.barcodeString = null
+        capturedBarcodeString = null
         val cameraIntent = Intent(
                 this@MainActivity,
                 AcuantCameraActivity::class.java
         )
         cameraIntent.putExtra(ACUANT_EXTRA_CAMERA_OPTIONS,
-                AcuantCameraOptions(allowBox = true, autoCapture = autoCaptureEnabled)
+            AcuantCameraOptions.DocumentCameraOptionsBuilder()
+                .setAutoCapture(autoCaptureEnabled)
+                .build()
         )
         startActivityForResult(cameraIntent, Constants.REQUEST_CAMERA_PHOTO)
     }
@@ -481,9 +510,74 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun handleImageError() {
+        val alert = AlertDialog.Builder(this@MainActivity)
+        alert.setTitle("Image Error")
+        alert.setMessage("No image received from capture")
+        alert.setPositiveButton("OK") { dialog, _ ->
+            dialog.dismiss()
+        }
+        alert.show()
+    }
+
+    private fun showDialog(message: String, title: String = "Error",
+                              yesOnClick: DialogInterface.OnClickListener? = null,
+                              noOnClick: DialogInterface.OnClickListener? = null) {
+
+        setProgress(false)
+        val alert = android.support.v7.app.AlertDialog.Builder(this@MainActivity)
+        alert.setTitle(title)
+        alert.setMessage(message)
+        if (yesOnClick != null) {
+            alert.setPositiveButton("YES", yesOnClick)
+            if (noOnClick != null) {
+                alert.setNegativeButton("NO", noOnClick)
+            }
+        } else {
+            alert.setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+            }
+        }
+        alert.show()
+    }
+
+    private fun saveImage(image: Bitmap, type: String, retries: Int) {
+        val file = saveRawImageToFile(bitmapToByteArray(image), type)
+        ImageProcessor.ProcessImage(file, type, retries)
+        when (type) {
+            Constants.FRONT_SIDE -> {
+                TruliooInformationStorage.frontImageFile = file
+            }
+            Constants.BACK_SIDE -> {
+                TruliooInformationStorage.backImageFile = file
+            }
+            Constants.SELFIE -> {
+                TruliooInformationStorage.selfieImageFile = file
+            }
+        }
+    }
+
+    private fun saveRawImageToFile(rawImage: ByteArray, type: String): File {
+        val filesDir = this.filesDir
+        val imageFile = File(filesDir, type + DateTime() + ".jpg")
+        imageFile.writeBytes(rawImage)
+        return imageFile
+    }
+
+    private fun bitmapToByteArray(image: Bitmap): ByteArray {
+        val bos = ByteArrayOutputStream()
+        image.compress(Bitmap.CompressFormat.JPEG, 100, bos)
+        return bos.toByteArray()
+    }
+
     // Process Front image
-    private fun processFrontOfDocument() {
+    private fun processFrontOfDocument(image: Bitmap) {
+        val numberOfRetries = currentRetries
+        GlobalScope.launch {
+            saveImage(image, Constants.FRONT_SIDE, numberOfRetries)
+        }
         frontCaptured = true
+        currentRetries = 0
         if (isBackSideRequired()) {
             this@MainActivity.runOnUiThread {
                 val alert = AlertDialog.Builder(this@MainActivity)
@@ -492,9 +586,6 @@ class MainActivity : AppCompatActivity() {
                 alert.setPositiveButton("OK") { dialog, _ ->
                     dialog.dismiss()
                     showDocumentCaptureCamera()
-                }
-                alert.setNegativeButton("CANCEL") { dialog, _ ->
-                    dialog.dismiss()
                 }
                 alert.show()
             }
@@ -516,9 +607,48 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun processBackOfDocument(image: Bitmap) {
+        val numberOfRetries = currentRetries
+        GlobalScope.launch {
+            saveImage(image, Constants.BACK_SIDE, numberOfRetries)
+        }
+        currentRetries = 0
+        val alert = AlertDialog.Builder(this@MainActivity)
+        alert.setTitle("Message")
+        if (capturedBarcodeString != null && capturedBarcodeString!!.trim().isNotEmpty()) {
+            alert.setMessage("Following barcode is captured.\n\n"
+                    + "Barcode String :\n\n"
+                    + capturedBarcodeString!!.subSequence(0, (capturedBarcodeString!!.length * 0.25).toInt())
+                    + "...\n\n"
+                    + "Capture Selfie Image now.")
+        }
+        else{
+            alert.setMessage("Capture Selfie Image now.")
+        }
+        alert.setPositiveButton("OK") { dialog, _ ->
+            setProgress(true, "Processing")
+            showFrontCamera()
+            dialog.dismiss()
+        }
+        alert.setNegativeButton("SKIP") { dialog, _ ->
+            facialLivelinessResultString = "Facial Liveliness Failed"
+            capturingSelfieImage = false
+            showTruliooConfirm()
+            dialog.dismiss()
+        }
+        alert.show()
+    }
+
+    private fun processSelfie(image: Bitmap) {
+        val numberOfRetries = currentRetries
+        saveImage(image, Constants.SELFIE, numberOfRetries)
+        facialLivelinessResultString = "Facial Liveliness: true"
+        currentRetries = 0
+        showTruliooConfirm()
+    }
+
     //process Facial Match
     fun processFacialMatch() {
-        //MainActivity@ capturingFacialMatch = true
         thread {
             while (capturingImageData) {
                 Thread.sleep(100)
@@ -547,12 +677,10 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                         capturingSelfieImage = false
-                        //capturingFacialMatch = false
                     })
                 }
                 else{
                     capturingSelfieImage = false
-                    //capturingFacialMatch = false
                 }
             }
         }
@@ -566,16 +694,18 @@ class MainActivity : AppCompatActivity() {
         )
         confirmationIntent.putExtra("IsFrontImage", isFrontImage)
         confirmationIntent.putExtra("IsBarcode", isBarcode)
+        if (recentImage != null) {
+            image = recentImage!!.image
+            confirmationIntent.putExtra("sharpness", recentImage!!.sharpness)
+            confirmationIntent.putExtra("glare", recentImage!!.glare)
+            confirmationIntent.putExtra("dpi", recentImage!!.dpi)
+            confirmationIntent.putExtra("barcode", capturedBarcodeString)
+        }
         startActivityForResult(confirmationIntent, Constants.REQUEST_CONFIRMATION)
     }
 
     fun showTruliooConfirm() {
         setProgress(false)
-        TruliooInformationStorage.cleanup()
-        TruliooInformationStorage.frontImage = capturedFrontImage?.image
-        TruliooInformationStorage.backImage = capturedBackImage?.image
-        TruliooInformationStorage.selfieImage = capturedSelfieImage
-
         val resultIntent = Intent(
                 this@MainActivity,
                 TruliooConfirmationActivity::class.java
@@ -610,10 +740,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun testTruliooConnection(view: View){
-        var test = Intent(
+        val test = Intent(
                 this@MainActivity,
                 TruliooTestConnectionActivity::class.java
         )
         startActivity(test)
+    }
+
+    companion object {
+        var image: Bitmap? = null
     }
 }

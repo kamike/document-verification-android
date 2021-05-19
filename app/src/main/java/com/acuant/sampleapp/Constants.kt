@@ -10,6 +10,10 @@ class Constants {
         public val REQUEST_CONFIRMATION = 3
         public val REQUEST_RETRY = 4
         public val REQUEST_CAMERA_HG_SELFIE = 5
-
+        public const val ACUANT_SDK_VERSION = "AcuantV11.4.12"
+        public const val TRULIOO_VERSION = "1"
+        public const val FRONT_SIDE = "Front Side"
+        public const val BACK_SIDE = "Back Side"
+        public const val SELFIE = "Selfie"
     }
 }

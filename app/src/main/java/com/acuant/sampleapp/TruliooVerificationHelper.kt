@@ -1,10 +1,8 @@
 package com.acuant.sampleapp
 
-import android.graphics.Bitmap
 import com.trulioo.normalizedapi.ApiClient
 import com.trulioo.normalizedapi.api.ConnectionApi
 import com.trulioo.normalizedapi.api.VerificationsApi
-import java.lang.NullPointerException
 
 public class TruliooVerificationHelper {
         //Enter Trulioo credentials

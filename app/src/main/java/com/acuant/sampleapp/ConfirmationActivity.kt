@@ -13,18 +13,19 @@ import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
-import com.acuant.acuantcamera.CapturedImage
-import com.acuant.acuantcommon.model.ErrorCodes
 
 
 class ConfirmationActivity : AppCompatActivity() {
 
-    val SHARPNESS_THRESHOLD = 50
-    val GLARE_THRESHOLD = 50
-
     var IsFrontImage: Boolean = true
     var IsBarcode: Boolean = false
     var isHealthCard: Boolean = false
+
+    private var barcodeString: String? = null
+    private var image: Bitmap? = null
+    private var sharpness = -1
+    private var glare = -1
+    private var dpi = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,56 +33,65 @@ class ConfirmationActivity : AppCompatActivity() {
         IsFrontImage = intent.getBooleanExtra("IsFrontImage", true)
         isHealthCard = intent.getBooleanExtra("IsHealthCard", false)
         IsBarcode = intent.getBooleanExtra("IsBarcode", false)
+        barcodeString = intent.getStringExtra("barcode")
+        sharpness = intent.getIntExtra("sharpness", -1)
+        glare = intent.getIntExtra("glare", -1)
+        dpi = intent.getIntExtra("dpi", -1)
+        image = MainActivity.image
 
-        if(CapturedImage.barcodeString != null){
+        if(barcodeString != null){
             val barcodeText = findViewById<TextView>(R.id.barcodeText)
-            barcodeText.setText("Barcode :" + CapturedImage.barcodeString!!.substring(0,(CapturedImage.barcodeString!!.length*0.2).toInt())+"...");
+            barcodeText.text = "Barcode :" + barcodeString!!.substring(0,(barcodeString!!.length*0.2).toInt())+"..."
         }
 
-        if (CapturedImage.acuantImage != null && (CapturedImage.acuantImage!!.error == null || (CapturedImage.acuantImage!!.error != null && CapturedImage.acuantImage!!.error.errorCode == ErrorCodes.ERROR_LowResolutionImage))) {
+        if (image != null) {
 
             val generalMessageText = findViewById<TextView>(R.id.generalMessageText)
-            if (generalMessageText != null && CapturedImage.acuantImage!!.image != null) {
-                generalMessageText.setText("Ensure all texts are visible.")
-            } else if (CapturedImage.acuantImage!!.image == null) {
-                generalMessageText.setText("Could not crop image.")
+            if (generalMessageText != null && image != null) {
+                generalMessageText.text = "Ensure all texts are visible."
+            } else if (image == null) {
+                generalMessageText.text = "Could not crop image."
             }
 
-            val cardTypeText = findViewById<TextView>(R.id.cardTypeText)
-
-
-            if (CapturedImage.acuantImage != null) {
-                val sharpnessText = findViewById<TextView>(R.id.sharpnessText)
-                var isBlurry = CapturedImage.sharpnessScore < SHARPNESS_THRESHOLD
-                if (sharpnessText != null && CapturedImage.acuantImage!!.image != null) {
-                    if (isBlurry) {
-                        sharpnessText.setText("It is a blurry image. Sharpness Garde : " + CapturedImage.sharpnessScore)
-                    } else {
-                        sharpnessText.setText("It is a sharp image. Sharpness Garde : " + CapturedImage.sharpnessScore)
-                    }
+            val sharpnessText = findViewById<TextView>(R.id.sharpnessText)
+            val isBlurry = sharpness < SHARPNESS_THRESHOLD
+            if (sharpnessText != null) {
+                if (isBlurry) {
+                    sharpnessText.text = "It is a blurry image. Sharpness Garde : $sharpness"
+                } else {
+                    sharpnessText.text = "It is a sharp image. Sharpness Garde : $sharpness"
                 }
+            }
 
-                val glareText = findViewById<TextView>(R.id.glareText)
-                var hasGlare = CapturedImage.glareScore < GLARE_THRESHOLD
-                if (glareText != null && CapturedImage.acuantImage!!.image != null) {
-                    if (hasGlare) {
-                        glareText.setText("Image has glare. Glare Garde : " + CapturedImage.glareScore)
-                    } else {
-                        glareText.setText("Image doesn't have glare. Glare Garde : " + CapturedImage.glareScore)
-                    }
+            val glareText = findViewById<TextView>(R.id.glareText)
+            val hasGlare = glare < GLARE_THRESHOLD
+            if (glareText != null) {
+                if (hasGlare) {
+                    glareText.text = "Image has glare. Glare Garde : $glare"
+                } else {
+                    glareText.text = "Image doesn't have glare. Glare Garde : $glare"
                 }
             }
 
             val dpiText = findViewById<TextView>(R.id.dpiText)
-            if (dpiText != null && CapturedImage.acuantImage!!.image != null) {
-                if (CapturedImage.acuantImage!!.dpi != null) {
-                    dpiText.setText("DPI : " + CapturedImage.acuantImage!!.dpi)
+            if (dpiText != null) {
+                TruliooInformationStorage.currentDPI = dpi
+                when {
+                    dpi < 550 -> {
+                        dpiText.text = "DPI is low: $dpi"
+                    }
+                    dpi < 600 -> {
+                        dpiText.text = "DPI is slightly low: $dpi"
+                    }
+                    else -> {
+                        dpiText.text = "DPI: $dpi"
+                    }
                 }
             }
 
             val confrimationImage = findViewById<ImageView>(R.id.confrimationImage)
-            if (confrimationImage != null && CapturedImage.acuantImage != null && CapturedImage.acuantImage!!.image != null) {
-                confrimationImage.setImageBitmap(CapturedImage.acuantImage!!.image)
+            if (confrimationImage != null ) {
+                confrimationImage.setImageBitmap(image)
                 confrimationImage.scaleType = ImageView.ScaleType.FIT_CENTER
 
                 val displayMetrics = DisplayMetrics()
@@ -97,7 +107,7 @@ class ConfirmationActivity : AppCompatActivity() {
             val confirmButton = findViewById<Button>(R.id.confirmButton)
             confirmButton.visibility = View.GONE
             val generalMessageText = findViewById<TextView>(R.id.generalMessageText)
-            generalMessageText.setText("Could not crop image.")
+            generalMessageText.text = "Could not crop image."
 
             val confrimationImage = findViewById<ImageView>(R.id.confrimationImage)
             if (confrimationImage != null) {
@@ -132,7 +142,7 @@ class ConfirmationActivity : AppCompatActivity() {
         result.putExtra("Confirmed", false)
         result.putExtra("IsFrontImage", IsFrontImage)
         result.putExtra("IsBarcode", IsBarcode)
-        this@ConfirmationActivity.setResult(Constants.REQUEST_CONFIRMATION, result)
+        this@ConfirmationActivity.setResult(Constants.REQUEST_RETRY, result)
         this@ConfirmationActivity.finish()
     }
 
@@ -148,5 +158,10 @@ class ConfirmationActivity : AppCompatActivity() {
         val canvas = Canvas(image)
         canvas.drawText(text, 0.0f, baseline, paint)
         return image
+    }
+
+    companion object {
+        const val SHARPNESS_THRESHOLD = 50
+        const val GLARE_THRESHOLD = 50
     }
 }

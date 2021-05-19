@@ -2,25 +2,20 @@ package com.acuant.sampleapp
 
 import android.app.AlertDialog
 import android.content.Intent
-import android.support.v7.app.AppCompatActivity
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.support.v7.app.AppCompatActivity
+import android.util.Base64
 import android.view.View
 import android.widget.ProgressBar
-import android.graphics.Bitmap
-import android.text.method.ScrollingMovementMethod
 import android.widget.TextView
-import com.google.gson.Gson
-import java.io.ByteArrayOutputStream
-import com.trulioo.normalizedapi.ApiCallback
-import com.trulioo.normalizedapi.ApiException
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
+import com.trulioo.normalizedapi.ApiCallback
+import com.trulioo.normalizedapi.ApiException
 import com.trulioo.normalizedapi.model.*
 import org.json.JSONArray
-import android.content.DialogInterface
-import android.support.v4.app.SupportActivity
-import android.support.v4.app.SupportActivity.ExtraData
-import android.support.v4.content.ContextCompat.getSystemService
+import java.io.ByteArrayOutputStream
 import kotlin.concurrent.thread
 
 
@@ -39,7 +34,7 @@ class TruliooResultActivity : AppCompatActivity() {
         progressBar?.visibility = View.VISIBLE
 
         if(TruliooInformationStorage.firstName.isNullOrEmpty() || TruliooInformationStorage.lastName.isNullOrEmpty()||
-                TruliooInformationStorage.frontImage == null || (TruliooInformationStorage.cardType == "DrivingLicence" && TruliooInformationStorage.backImage == null)){
+                TruliooInformationStorage.frontImageFile == null || (TruliooInformationStorage.cardType == "DrivingLicence" && TruliooInformationStorage.backImageFile == null)){
             processFinish()
             val alert = AlertDialog.Builder(this@TruliooResultActivity)
             alert.setTitle("Error")
@@ -117,17 +112,17 @@ class TruliooResultActivity : AppCompatActivity() {
     }
 
     fun buildRequest(): VerifyRequest{
-        var document = Document()
+        val document = Document()
 
-        document.documentFrontImage(bitmapTobase64(TruliooInformationStorage.frontImage))
+        document.documentFrontImage(TruliooInformationStorage.frontImageFile.readBytes())
         document.documentType(TruliooInformationStorage.cardType)
 
-        if(TruliooInformationStorage.backImage != null){
-            document.documentBackImage(bitmapTobase64(TruliooInformationStorage.backImage))
+        if(TruliooInformationStorage.backImageFile != null){
+            document.documentBackImage(TruliooInformationStorage.backImageFile.readBytes())
         }
 
-        if(TruliooInformationStorage.selfieImage != null){
-            document.livePhoto(bitmapTobase64(TruliooInformationStorage.selfieImage))
+        if(TruliooInformationStorage.selfieImageFile != null){
+            document.livePhoto(TruliooInformationStorage.selfieImageFile.readBytes())
         }
 
         return VerifyRequest()
@@ -140,6 +135,8 @@ class TruliooResultActivity : AppCompatActivity() {
                                 .firstSurName(TruliooInformationStorage.lastName))
                         .document(document))
     }
+
+
 
     fun processFinish(){
         runOnUiThread(object : Runnable {

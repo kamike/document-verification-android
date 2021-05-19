@@ -2,6 +2,7 @@ package com.acuant.sampleapp
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.view.View
@@ -13,18 +14,23 @@ class TruliooConfirmationActivity : AppCompatActivity() {
     var lastNameBox:EditText? = null
     var countryDropDown:Spinner? = null
     var documentTypeTextBox:TextView? = null
+    var cancelButton: Button? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_trulioo_confirmation)
 
-        var frontImage = TruliooInformationStorage.frontImage
-        var backImage = TruliooInformationStorage.backImage
-        var selfieImage = TruliooInformationStorage.selfieImage
+        var frontImage = TruliooInformationStorage.frontImageFile
+        var backImage = TruliooInformationStorage.backImageFile
+        var selfieImage = TruliooInformationStorage.selfieImageFile
 
         firstNameBox = findViewById<EditText>(R.id.firstNameBox)
         lastNameBox = findViewById<EditText>(R.id.lastNameBox)
+        cancelButton = findViewById(R.id.cancelButton)
+        cancelButton?.setOnClickListener {
+            cancelClicked()
+        }
 
         // supported countryCodes/ documentTypes can be fetch from GlobalGateway server
         // please see the details on the documentation page
@@ -36,20 +42,19 @@ class TruliooConfirmationActivity : AppCompatActivity() {
 
         val frontImageBox = findViewById<ImageView>(R.id.frontImage)
         if(frontImage != null){
-            frontImageBox.setImageBitmap(frontImage)
+            frontImageBox.setImageBitmap(BitmapFactory.decodeFile(frontImage.path))
             frontImageBox.scaleType = ImageView.ScaleType.FIT_CENTER
         }
 
         val backImageBox = findViewById<ImageView>(R.id.backImage)
         if(backImage != null){
-            backImageBox.setImageBitmap(backImage)
+            backImageBox.setImageBitmap(BitmapFactory.decodeFile(backImage.path))
             backImageBox.scaleType = ImageView.ScaleType.FIT_CENTER
         }
 
         val selfieImageBox = findViewById<ImageView>(R.id.selfieImage)
-
         if(selfieImage != null){
-            selfieImageBox.setImageBitmap(selfieImage)
+            selfieImageBox.setImageBitmap(BitmapFactory.decodeFile(selfieImage.path))
             selfieImageBox.scaleType = ImageView.ScaleType.FIT_CENTER
         }
     }
