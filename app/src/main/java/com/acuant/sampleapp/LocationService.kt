@@ -31,10 +31,15 @@ class LocationService {
             }
 
             try {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 1f, locationListener)
-                locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                if (!locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                    mainClass?.locationFailureCallback("Network not available for location")
+                    return
+                }
+
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 1f, locationListener)
+                locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             } catch (ex:SecurityException) {
-                mainClass?.locationFailureCallback()
+                mainClass?.locationFailureCallback(ex.toString())
             }
         }
     }

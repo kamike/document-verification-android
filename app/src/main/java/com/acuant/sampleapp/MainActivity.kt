@@ -115,14 +115,12 @@ class MainActivity : AppCompatActivity() {
                     if ((ContextCompat.checkSelfPermission(this@MainActivity,
                                     Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
                         getLocation()
+                        return
                     }
-                } else {
-                    println("Location Permission DENIED")
-                    showDocumentCaptureCamera()
                 }
-                return
             }
         }
+        locationFailureCallback("Location Permission Denied")
     }
 
     override fun onAttachedToWindow() {
@@ -162,10 +160,10 @@ class MainActivity : AppCompatActivity() {
         showDocumentCaptureCamera()
     }
 
-    fun locationFailureCallback() {
+    fun locationFailureCallback(message: String) {
         val alert = AlertDialog.Builder(this@MainActivity)
-        alert.setTitle("Error")
-        alert.setMessage("Could not get device location")
+        alert.setTitle("Location Error")
+        alert.setMessage(message)
         alert.setPositiveButton("OK") { dialog, _ ->
             dialog.dismiss()
             requestLocationCallback()
@@ -174,22 +172,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getLocation() {
-        LocationService.getLocation(getSystemService(LOCATION_SERVICE) as LocationManager,
-                this@MainActivity)
+        val context = this@MainActivity
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        if (locationManager.isLocationEnabled) {
+            LocationService.getLocation(locationManager, context)
+        } else {
+            locationFailureCallback("System Location is disabled")
+        }
     }
 
     private fun requestLocation() {
         setProgress(true, "Processing...")
-        if (ContextCompat.checkSelfPermission(this@MainActivity,
-                        Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this@MainActivity,
-                            Manifest.permission.ACCESS_FINE_LOCATION)) {
-                ActivityCompat.requestPermissions(this@MainActivity,
-                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
-            } else {
-                ActivityCompat.requestPermissions(this@MainActivity,
-                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
-            }
+        val context = this@MainActivity
+        if (ContextCompat.checkSelfPermission(context,
+            Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this@MainActivity,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
         } else {
             getLocation()
         }
@@ -209,7 +207,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun initializeAcuantSdk(callback:IAcuantPackageCallback){
         try{
-            AcuantInitializer.intialize("acuant.config.xml", this, listOf(ImageProcessorInitializer()),
+            AcuantInitializer.initialize("acuant.config.xml", this, listOf(ImageProcessorInitializer()),
                     object: IAcuantPackageCallback{
                         override fun onInitializeSuccess() {
                             if(Credential.get().subscription == null || Credential.get().subscription.isEmpty()){

@@ -40,14 +40,17 @@ class ImageProcessor {
             messageObject.put("TIMESTAMP", Instant.now().toString())
             messageObject.put("IPADDRESS", ipAddress)
             messageObject.put("RETRIES", retries)
-            messageObject.put("ACUANTHORIZONTALRESOLUTION", TruliooInformationStorage.currentDPI)
-            messageObject.put("ACUANTVERTICALRESOLUTION", TruliooInformationStorage.currentDPI)
             messageObject.put("GPSLATITUDE", TruliooInformationStorage.currentLat)
             messageObject.put("GPSLONGITUDE", TruliooInformationStorage.currentLng)
 
             if (imageType == "Selfie") {
                 messageObject.put("TRULIOOSDK", "SELFIE")
                 messageObject.put("MODE", "AUTO")
+                val options: BitmapFactory.Options = BitmapFactory.Options()
+                options.inJustDecodeBounds = true
+                BitmapFactory.decodeFile(image.absolutePath, options)
+                messageObject.put("ACUANTHORIZONTALRESOLUTION", options.outWidth)
+                messageObject.put("ACUANTVERTICALRESOLUTION", options.outHeight)
             } else {
                 if (TruliooInformationStorage.isAutoCaptureEnabled) {
                     messageObject.put("MODE", "AUTO")
@@ -62,6 +65,8 @@ class ImageProcessor {
                         messageObject.put("TRULIOOSDK", "PASSPORT")
                     }
                 }
+                messageObject.put("ACUANTHORIZONTALRESOLUTION", TruliooInformationStorage.currentDPI)
+                messageObject.put("ACUANTVERTICALRESOLUTION", TruliooInformationStorage.currentDPI)
             }
 
             exifInfo.setAttribute(ExifInterface.TAG_SOFTWARE, messageObject.toString())
