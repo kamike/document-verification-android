@@ -6,8 +6,8 @@ import com.trulioo.normalizedapi.api.VerificationsApi
 
 public class TruliooVerificationHelper {
         //Enter Trulioo credentials
-        private val username = "Username"
-        private val password = "Password"
+        private val username = "dev_Trulioo_fRhwv"
+        private val password = "82FGr^^KB3hreygC"
         private var apiClient:ApiClient? = null
 
         fun init(){

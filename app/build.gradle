@@ -5,6 +5,7 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 
+
 repositories {
     maven { url 'https://maven.google.com' }
     maven { url 'https://raw.githubusercontent.com/iProov/android/master/maven/' }
@@ -114,4 +115,7 @@ dependencies {
     }
     implementation "com.acuant:acuantfacecapture:$acuantSDKVersion"
     implementation "com.acuant:acuantpassiveliveness:$acuantSDKVersion"
+
+
+    implementation 'com.blankj:utilcode:1.29.0'
 }

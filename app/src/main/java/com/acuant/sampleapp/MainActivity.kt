@@ -45,11 +45,13 @@ import com.acuant.acuantipliveness.facialcapture.service.FacialCaptureCredential
 import com.acuant.acuantipliveness.facialcapture.service.FacialCaptureLisenter
 import com.acuant.acuantipliveness.facialcapture.service.FacialSetupLisenter
 import com.acuant.sampleapp.utils.CommonUtils
+import com.blankj.utilcode.util.GsonUtils
+import com.blankj.utilcode.util.LogUtils
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.joda.time.DateTime
 import java.io.*
 import kotlin.concurrent.thread
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 
 
 class MainActivity : AppCompatActivity() {
@@ -140,6 +142,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onInitializeFailed(error: List<Error>) {
+                LogUtils.i("===onInitializeFailed:", GsonUtils.toJson(error))
                 this@MainActivity.runOnUiThread {
                     setProgress(false)
                     val alert = AlertDialog.Builder(this@MainActivity)
@@ -219,13 +222,15 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         override fun onInitializeFailed(error: List<Error>) {
+                            LogUtils.i("===AcuantInitializer:", GsonUtils.toJson(error))
+
                             callback.onInitializeFailed(error)
                         }
 
                     })
         }
         catch(e: AcuantException){
-            Log.e("Acuant Error", e.toString())
+            LogUtils.e("Acuant Error", e.toString())
             setProgress(false)
             val alert = AlertDialog.Builder(this@MainActivity)
             alert.setTitle("Error")
