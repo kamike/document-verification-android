@@ -127,7 +127,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-
         initializeSDK()
     }
 
